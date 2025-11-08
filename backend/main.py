@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from openai import OpenAI
 from dotenv import load_dotenv
 from pydantic import BaseModel
@@ -48,7 +48,7 @@ def get_latest_entries(n = 4):
 
 
 @app.post("/comment_journal")
-def comment_journal():
+async def comment_journal():
     recent_entries = get_latest_entries()
     if len(recent_entries) == 0:
         return {"error": "No recent entries found."}
@@ -56,15 +56,16 @@ def comment_journal():
     # Combine texts for model input
     journal_texts = "\n\n".join([row["entry_text"] for row in recent_entries])
 
-    response = client.responses.create(
+    stream = client.responses.create(
         model="gpt-5-nano",
         input=[
             {"role": "system", "content": "You are a supportive, attentive and empathetic commenter on the user's latest day journal while given knowledge about their previous 3 days"},
             {"role": "user", "content": f"{journal_texts}"}
-        ]
+        ],
+        stream = True,
     )
 
-    ai_comment = response.output[0].content[0].text
+    ai_comment = stream.output[0].content[0].text
 
     # Optionally store the comment for today
     conn = get_db_connection()
@@ -75,7 +76,18 @@ def comment_journal():
     conn.commit()
     conn.close()
 
-    return {"ai_comment": ai_comment}
+    def event_generator():
+        for event in stream:
+            if event.type == "response.output_text.delta":
+                yield f"data: {json.dumps({'delta': event.delta})}\n\n"
+            elif event.type == "response.completed":
+                yield "data: [DONE]\n\n"
+                break
+            elif event.type == "response.error":
+                yield f"data: {json.dumps({'error': event.error})}\n\n"
+                break
+
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
 
 
 #---------------------Chat---------------------
@@ -89,6 +101,9 @@ def save_message(speaker: str, text: str):
     conn.commit()
     conn.close()
 
+
+    
+
 def get_message(n = 20):
     conn = get_db_connection()
     rows = conn.execute(
@@ -97,34 +112,45 @@ def get_message(n = 20):
     ).fetchall()
     return [dict(row) for row in reversed(rows)] 
 
+
+
+
 @app.post("/comment_message")
-def comment_message(text: str):
+async def comment_message(message: str):
     try:
         recent_entries = get_latest_entries()
         journal_texts = "\n\n".join([row["entry_text"] for row in recent_entries])
     except Exception:
         journal_texts = ""
-        
-    full_text = journal_texts + "\n\n" + text if journal_texts else text
 
-    response = client.responses.create(
-        model="openai/gpt-5-nano",
-        input=[
-            {"role": "system", "content": "You are a supportive, attentive, and empathetic commentator on the user's message."},
-            {"role": "user", "content": full_text}
-        ]
-    )
+    full_text = journal_texts + "\n\n" + message if journal_texts else message
 
-    try:
-        ai_reply = response.output[0].content[0].text
-    except Exception:
-        ai_reply = "Sorry, I couldn't generate a comment at this time."
+    stream = client.responses.stream(
+            model="openai/gpt-5-nano",
+            input=[
+                {"role": "system", "content": "You are a supportive, attentive, and empathetic commentator on the user's message."},
+                {"role": "user", "content": full_text}
+            ],
+            stream = True,
+        )
+    def event_generator():
+        for event in stream:
+            if event.type == "response.output_text.delta":
+                yield f"data: {json.dumps({'delta': event.delta})}\n\n"
+            elif event.type == "response.completed":
+                yield "data: [DONE]\n\n"
+                break
+            elif event.type == "response.error":
+                yield f"data: {json.dumps({'error': event.error})}\n\n"
+                break
 
-    return JSONResponse(content={"reply": ai_reply})
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
+
+
 
 @app.post("/api/chat/{message}")
-def test_comment(message : str):
-    response = client.responses.create(
+async def test_comment(message : str):
+    stream  = client.responses.create(
             model="gpt-5-nano",
             input=[
                 {"role": "system", "content": "You are a supportive, attentive and empathetic commentor on the user's message knowing "},
@@ -132,6 +158,15 @@ def test_comment(message : str):
             ]
         ) 
     
-    ai_reply = response.output[0].content[0].text
+    def event_generator():
+        for event in stream:
+            if event.type == "response.output_text.delta":
+                yield f"data: {json.dumps({'delta': event.delta})}\n\n"
+            elif event.type == "response.completed":
+                yield "data: [DONE]\n\n"
+                break
+            elif event.type == "response.error":
+                yield f"data: {json.dumps({'error': event.error})}\n\n"
+                break
 
-    return JSONResponse(content={"reply": ai_reply})
+    return StreamingResponse(event_generator(), media_type="text/event-stream")
