@@ -1,0 +1,9 @@
+/* make numbers a bit smaller in the calendar */
+.calendar-grid .grid div {
+  height: 32px;
+}
+
+/* ensure the page uses the app default font but keep spacing */
+body .diary-page-root {
+  font-family: inherit;
+}
