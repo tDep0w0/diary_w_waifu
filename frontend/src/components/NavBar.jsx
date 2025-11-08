@@ -1,10 +1,10 @@
 import { Link, useLocation } from 'react-router-dom'
 import './NavBar.css'
 
-import chatButton from '../assets/chat-button.svg'
-import clickedChatButton from '../assets/clicked-chat-button.svg'
-import diaryButton from '../assets/diary-button.svg'
-import clickedDiaryButton from '../assets/clicked-diary-button.svg'
+import chatButton from '../assets/chat-page-button.svg'
+import clickedChatButton from '../assets/clicked-chat-page-button.svg'
+import diaryButton from '../assets/diary-page-button.svg'
+import clickedDiaryButton from '../assets/clicked-diary-page-button.svg'
 
 export default function NavBar() {
   const location = useLocation()
