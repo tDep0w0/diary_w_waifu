@@ -6,11 +6,12 @@ export default function DiaryPage() {
   const navigate = useNavigate();
 
   return (
-      <div className="min-h-[80vh] bg-[#071226] text-white p-6">
+    <div className='h-full w-full flex items-center justify-center'>
+      <div className="h-fit bg-[#071226] text-white p-20">
         <div className="max-w-6xl mx-auto flex gap-6">
           {/* Left column: calendar */}
           <aside className="w-72 shrink-0">
-            <button className="w-full bg-white text-black rounded-md py-2 px-3 mb-6">+ Add Log</button>
+            <button onClick={() => navigate("/diary/add")} className="w-full bg-white text-black rounded-md py-2 px-3 mb-6">+ Add Log</button>
 
             <div className="text-center text-sm text-gray-300 mb-4"> 
               <button className="px-2">&lt;</button>
@@ -65,6 +66,7 @@ export default function DiaryPage() {
             </div>
           </div>
       </div>
+    </div>
     </div>
   )
 }

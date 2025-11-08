@@ -1,5 +1,5 @@
 import './App.css'
-import { BrowserRouter as Router, Routes, Route, Link, useLocation } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom'
 import ChatPage from './pages/ChatPage'
 import DiaryPage from './pages/DiaryPage'
 import AddLogPage from './pages/AddLogPage';
