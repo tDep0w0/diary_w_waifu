@@ -11,10 +11,10 @@ export default function ChatPage() {
   const [showMessages, setShowMessages] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
-  const [reply, setReply] = useState("");
 
   const messageListRef = useRef(null);
   const introRef = useRef(null);
+  
 
   useEffect(() => {
     if (messageListRef.current) {
@@ -46,37 +46,39 @@ export default function ChatPage() {
 
     setMessage('');
     setMessages(prev => [...prev, userMessage, {
-      id: Date.now() + 1, 
-      text: "",
-      sender: 'bot'
+      id: Date.now(),
+      text: "Loading...",
+      sender: 'bot',
     }]);
     setHasStarted(true); 
     setIsLoading(true);
-    setReply("");
 
     try {
-      const response = await fetch(`/api/chat/?message=
+      const response = await fetch(`http://127.0.0.1:8000/api/chat/
         ${encodeURIComponent(message)}`);
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
+
+      let streamedContent = "";
       
       while (true) {
         const { value, done } = await reader.read();
         if (done) break;
 
         let chunk = decoder.decode(value, { stream: true });
-        setReply(prev => prev + chunk);
-
-        const botReply = {
-          id: Date.now() + 1, 
-          text: reply,
-          sender: 'bot'
-        };
+        streamedContent += chunk;
+        console.log(chunk);
+        
 
         setMessages(prev => {
-          const updated = prev.slice(0, -1);
-          return [...updated, botReply];
+          const updatedMessages = [...prev];
+          updatedMessages[updatedMessages.length - 1] = {
+            id: updatedMessages[updatedMessages.length - 1].id,
+            text: streamedContent,
+            sender: 'bot',
+          };
+          return updatedMessages;
         })
       }
 

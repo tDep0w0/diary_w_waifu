@@ -1,2 +1,2 @@
 ###
-POST http://127.0.0.1:8000/api/chat?message="hi"
+GET http://127.0.0.1:8000/api/chat/Who%20are%20you

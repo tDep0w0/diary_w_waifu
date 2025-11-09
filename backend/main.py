@@ -10,7 +10,6 @@ import json
 from fastapi.middleware.cors import CORSMiddleware
 
 
-
 load_dotenv()
 app = FastAPI()
 app.add_middleware(
@@ -105,6 +104,7 @@ async def comment_journal():
 
         return StreamingResponse(token_generator(), media_type="text/plain")
 
+
 # ---------------------Chat---------------------
 
 
@@ -176,7 +176,5 @@ async def test_comment(message: str):
         for event in stream:
             if event.type == "response.output_text.delta":
                 yield event.delta  # event.delta contains the incremental token text
-
-        yield "[DONE]"
 
     return StreamingResponse(token_generator(), media_type="text/plain")
