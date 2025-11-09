@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse, StreamingResponse
 from openai import OpenAI
 from dotenv import load_dotenv
@@ -80,25 +80,42 @@ async def get_latest_entries(n=4):
 
 
 
-@app.post("/api/add_and_comment_entry/{entry_text}")
-async def add_and_comment_entry(entry_text: str):
-    # 1️⃣ Add the entry to the database
+@app.post("/api/add_or_modify_entry/")
+async def add_or_modify_entry(entry_text: str, entry_date: str = None):
     conn = get_db_connection()
-    conn.execute(
-        "INSERT INTO diary_entries (entry_date, entry_text) VALUES (DATE('now'), ?)",
-        (entry_text,),
-    )
+
+    if not entry_date:
+        conn.execute(
+            "INSERT INTO diary_entries (entry_date, entry_text) VALUES (DATE('now'), ?)",
+            (entry_text,),
+        )
+        entry_date = datetime.now().strftime("%Y-%m-%d")
+    else:
+        cursor = conn.execute(
+            "SELECT * FROM diary_entries WHERE entry_date = ?",
+            (entry_date,)
+        )
+        existing = cursor.fetchone()
+        if existing:
+            conn.execute(
+                "UPDATE diary_entries SET entry_text = ?, ai_response_text = NULL WHERE entry_date = ?",
+                (entry_text, entry_date)
+            )
+        else:
+            conn.execute(
+                "INSERT INTO diary_entries (entry_date, entry_text) VALUES (?, ?)",
+                (entry_date, entry_text)
+            )
+
     conn.commit()
     conn.close()
 
-    # 2️⃣ Get the latest 4 entries (including the one just added)
     recent_entries = await get_latest_entries()
     if len(recent_entries) == 0:
         return {"error": "No recent entries found."}
 
     journal_texts = "\n\n".join([row["entry_text"] for row in recent_entries])
 
-    # 3️⃣ Stream AI comment
     stream = client.responses.create(
         model="openai/gpt-5-nano",
         input=[
@@ -123,11 +140,10 @@ async def add_and_comment_entry(entry_text: str):
                 final_text += event.delta
                 yield event.delta
             elif event.type == "response.completed":
-                # Save the AI comment to the latest entry
                 conn = get_db_connection()
                 conn.execute(
-                    "UPDATE diary_entries SET ai_response_text = ? WHERE entry_date = DATE('now')",
-                    (final_text,),
+                    "UPDATE diary_entries SET ai_response_text = ? WHERE entry_date = ?",
+                    (final_text, entry_date),
                 )
                 conn.commit()
                 conn.close()
@@ -137,6 +153,7 @@ async def add_and_comment_entry(entry_text: str):
                 break
 
     return StreamingResponse(token_generator(), media_type="text/plain")
+
 
 
 @app.get("/api/diary/{entry_date}")
@@ -158,26 +175,6 @@ async def get_journal(entry_date: str):
         return {"error": f"No journal entry found for {entry_date}"}
     
 
-@app.get("/api/modify_diary/{entry_date}")
-async def modify_diary(entry_date: str, entry_text: str):
-    conn = get_db_connection()
-    cursor = conn.execute(
-        "SELECT * FROM diary_entries WHERE entry_date = ?",
-        (entry_date,)
-    )
-    entry = cursor.fetchone()
-
-    if not entry:
-        conn.close()
-
-    conn.execute(
-        "UPDATE diary_entries SET entry_text = ? WHERE entry_date = ?",
-        (entry_text, entry_date)
-    )
-    conn.commit()
-    conn.close()
-
-    return {"message": f"Diary entry for {entry_date} updated successfully."}
 
 
 # ---------------------Chat---------------------
@@ -237,7 +234,7 @@ async def comment_message(message: str):
         stream = client.responses.create(
         model="gpt-5-nano",
         input=[
-            {"role": "system", "content": "You are a caring and emotionally intelligent listener. Depending on the length and the nature of the message, give a corresponding answer."},
+            {"role": "system", "content": "You are a caring and emotionally intelligent listener. Depending on the length and the nature of the message, give a corresponding answer. Please, unless required, just keep a casual conversation"},
             {"role": "user", "content": full_prompt},
         ], stream = True
     )
