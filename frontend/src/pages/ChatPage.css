@@ -85,6 +85,15 @@ p {
   width: clamp(24px, 6vw, 32px);
   height: clamp(24px, 6vw, 32px);
   object-fit: cover;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.chat-send-icon:hover {
+  transform: scale(1.05);
+}
+
+.chat-send-icon:active {
+  transform: scale(0.95);
 }
 
 .chat-container.started {
