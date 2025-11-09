@@ -1,22 +1,28 @@
 import { useNavigate } from 'react-router-dom';
 import { useContext, useState } from 'react';
 import AIResContext from '../context/AIResContext';
+import DateContext from '../context/DateContext';
+import LogContext from '../context/LogContext';
 
 export default function AddLogPage() {
   const navigate = useNavigate();
   const [logText, setLogText] = useState('');
   const { setResponse } = useContext(AIResContext)
+  const { DATE } = useContext(DateContext)
+  const { setLog } = useContext(LogContext)
 
   const handleSave = async () => {
     console.log('Saved log:', logText);
-    navigate("/diary")
+    setLog(logText)
+    setResponse("Loading...");
+    navigate("/diary");
     try {
-      const response = await fetch('http://127.0.0.1:8000/api/add_and_comment_entry/', {
+      const response = await fetch('http://127.0.0.1:8000/api/add_or_modify_entry/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ entry_text: logText }),
+        body: JSON.stringify({ entry_text: logText , entry_date: DATE}),
       });
 
       const reader = response.body.getReader();

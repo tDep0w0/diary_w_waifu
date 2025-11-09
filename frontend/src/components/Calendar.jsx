@@ -113,8 +113,8 @@ export default function Calendar({ onDateSelect }) {
       </div>
       <div className="calendar-grid bg-transparent text-gray-300">
         <div className="grid grid-cols-7 gap-2 text-xs text-center mb-2">
-          {daysOfWeek.map((day) => (
-            <div key={day}>{day}</div>
+          {daysOfWeek.map((day, i) => (
+            <div key={i}>{day}</div>
           ))}
         </div>
         <div className="grid grid-cols-7 gap-2 text-sm">{renderDays()}</div>

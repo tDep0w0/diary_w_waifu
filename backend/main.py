@@ -1,14 +1,15 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import JSONResponse, StreamingResponse
 from openai import OpenAI
 from dotenv import load_dotenv
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 import sqlite3
 from datetime import datetime
 import json
 from fastapi.middleware.cors import CORSMiddleware
 import asyncio
+from contextlib import contextmanager
 
 
 load_dotenv()
@@ -26,39 +27,49 @@ app.add_middleware(
 client = OpenAI(base_url="https://openrouter.ai/api/v1")
 
 
+@contextmanager
 def get_db_connection():
-    conn = sqlite3.connect("diary.db")
-    conn.row_factory = sqlite3.Row
-    return conn
+    conn = None
+    try:
+        conn = sqlite3.connect(
+            DATABASE_FILE,
+            isolation_level=None,
+            timeout=10,
+            check_same_thread=False,
+        )
+        conn.row_factory = sqlite3.Row
+        yield conn
+    finally:
+        if conn:
+            conn.close()
 
 
 def init_db():
-    conn = get_db_connection()
-    # Diary table
-    conn.execute(
+    with get_db_connection() as conn:
+        # Diary table
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS diary_entries (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                entry_date DATE NOT NULL,
+                entry_text TEXT NOT NULL,
+                ai_response_text TEXT,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
         """
-        CREATE TABLE IF NOT EXISTS diary_entries (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            entry_date DATE NOT NULL UNIQUE,
-            entry_text TEXT NOT NULL,
-            ai_response_text TEXT,
-            created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
         )
-    """
-    )
-    # Chat table
-    conn.execute(
+        # Chat table
+        conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS chat_messages (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                speaker VARCHAR(4) NOT NULL,
+                message_text TEXT NOT NULL
+            )
         """
-        CREATE TABLE IF NOT EXISTS chat_messages (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-            speaker VARCHAR(4) NOT NULL,
-            message_text TEXT NOT NULL
         )
-    """
-    )
-    conn.commit()
-    conn.close()
+        conn.commit()
 
 
 @app.on_event("startup")
@@ -70,65 +81,65 @@ def on_startup():
 
 
 async def get_latest_entries(n=4):
-    conn = get_db_connection()
-    rows = conn.execute(
+    with get_db_connection() as conn:
+        rows = conn.execute(
+            """
+            SELECT entry_date, entry_text, ai_response_text
+            FROM diary_entries
+            WHERE entry_date >= date('now', '-4 days')
+            ORDER BY entry_date ASC;
         """
-        SELECT entry_date, entry_text, ai_response_text
-        FROM diary_entries
-        WHERE entry_date >= date('now', '-4 days')
-        ORDER BY entry_date ASC;
-    """
-    ).fetchall()
-    conn.close()
+        ).fetchall()
+
     return rows
 
 
-@app.post("/api/add_and_comment_entry/{entry_text}")
-async def add_and_comment_entry(entry_text: str):
-    return await _create_stream_for_entry(entry_text)
-
-
-class EntryPayload(BaseModel):
+class EntryPayLoad(BaseModel):
+    entry_date: Optional[str]
     entry_text: str
 
 
-@app.post("/api/add_and_comment_entry/")
-async def add_and_comment_entry_body(payload: EntryPayload):
-    return await _create_stream_for_entry(payload.entry_text)
+# db.py
+import sqlite3
+from contextlib import contextmanager
+
+DATABASE_FILE = "your_diary.db"
 
 
-async def _create_stream_for_entry(entry_text: str):
-    # 1️⃣ Add the entry to the database
-    conn = get_db_connection()
+@app.post("/api/add_or_modify_entry/")
+async def add_or_modify_entry(payload: EntryPayLoad):
+    entry_text = payload.entry_text
+    entry_date = payload.entry_date
 
-    if not entry_date:
-        conn.execute(
-            "INSERT INTO diary_entries (entry_date, entry_text) VALUES (DATE('now'), ?)",
-            (entry_text,),
-        )
-        entry_date = datetime.now().strftime("%Y-%m-%d")
-    else:
-        cursor = conn.execute(
-            "SELECT * FROM diary_entries WHERE entry_date = ?", (entry_date,)
-        )
-        existing = cursor.fetchone()
-        if existing:
+    with get_db_connection() as conn:
+        if not entry_date:
             conn.execute(
-                "UPDATE diary_entries SET entry_text = ?, ai_response_text = NULL WHERE entry_date = ?",
-                (entry_text, entry_date),
+                "INSERT INTO diary_entries (entry_date, entry_text) VALUES (DATE('now'), ?)",
+                (entry_text,),
             )
+            # You might need to retrieve the actual date for the AI update later
+            entry_date = datetime.now().strftime("%Y-%m-%d")  # This is an approximation
         else:
-            conn.execute(
-                "INSERT INTO diary_entries (entry_date, entry_text) VALUES (?, ?)",
-                (entry_date, entry_text),
+            # The logic remains the same for update/insert
+            cursor = conn.execute(
+                "SELECT * FROM diary_entries WHERE entry_date = ?", (entry_date,)
             )
-
-    conn.commit()
-    conn.close()
+            existing = cursor.fetchone()
+            if existing:
+                conn.execute(
+                    "UPDATE diary_entries SET entry_text = ?, ai_response_text = NULL WHERE entry_date = ?",
+                    (entry_text, entry_date),
+                )
+            else:
+                conn.execute(
+                    "INSERT INTO diary_entries (entry_date, entry_text) VALUES (?, ?)",
+                    (entry_date, entry_text),
+                )
+        conn.commit()
 
     recent_entries = await get_latest_entries()
     if len(recent_entries) == 0:
-        return JSONResponse({"error": "No recent entries found."})
+        return {"error": "No recent entries found."}
 
     journal_texts = "\n\n".join([row["entry_text"] for row in recent_entries])
 
@@ -147,6 +158,11 @@ async def _create_stream_for_entry(entry_text: str):
         stream=True,
     )
 
+    print("Text:")
+    print(entry_text)
+    print("Date")
+    print(entry_date)
+
     final_text = ""
 
     async def token_generator():
@@ -156,13 +172,12 @@ async def _create_stream_for_entry(entry_text: str):
                 final_text += event.delta
                 yield event.delta
             elif event.type == "response.completed":
-                conn = get_db_connection()
-                conn.execute(
-                    "UPDATE diary_entries SET ai_response_text = ? WHERE entry_date = ?",
-                    (final_text, entry_date),
-                )
-                conn.commit()
-                conn.close()
+                with get_db_connection() as conn:  # <-- Use context manager here too
+                    conn.execute(
+                        "UPDATE diary_entries SET ai_response_text = ? WHERE entry_date = ?",
+                        (final_text, entry_date),
+                    )
+                    conn.commit()
                 break
             elif event.type == "response.error":
                 yield f"\n[ERROR]: {event.error}\n"
@@ -173,12 +188,11 @@ async def _create_stream_for_entry(entry_text: str):
 
 @app.get("/api/diary/{entry_date}")
 async def get_journal(entry_date: str):
-    conn = get_db_connection()
-    row = conn.execute(
-        "SELECT entry_date, entry_text, ai_response_text FROM diary_entries WHERE entry_date = ?",
-        (entry_date,),
-    ).fetchone()
-    conn.close()
+    with get_db_connection() as conn:
+        row = conn.execute(
+            "SELECT entry_date, entry_text, ai_response_text FROM diary_entries WHERE entry_date = ?",
+            (entry_date,),
+        ).fetchone()
 
     if row:
         return {
@@ -194,29 +208,28 @@ async def get_journal(entry_date: str):
 
 
 async def save_message(speaker: str, text: str):
-    conn = get_db_connection()
-    conn.execute(
-        "INSERT INTO chat_messages (speaker, message_text, timestamp) VALUES (?, ?, datetime('now'))",
-        (speaker, text),
-    )
-    conn.commit()
-    conn.close()
+    with get_db_connection() as conn:
+        conn.execute(
+            "INSERT INTO chat_messages (speaker, message_text, timestamp) VALUES (?, ?, datetime('now'))",
+            (speaker, text),
+        )
+        conn.commit()
 
 
 async def get_today_messages(limit=30):
-    conn = get_db_connection()
-    today = datetime.now().strftime("%Y-%m-%d")
-    rows = conn.execute(
-        """
-        SELECT speaker, message_text
-        FROM chat_messages
-        WHERE DATE(timestamp) = ?
-        ORDER BY timestamp ASC
-        LIMIT ?
-        """,
-        (today, limit),
-    ).fetchall()
-    conn.close()
+    with get_db_connection() as conn:
+        today = datetime.now().strftime("%Y-%m-%d")
+        rows = conn.execute(
+            """
+            SELECT speaker, message_text
+            FROM chat_messages
+            WHERE DATE(timestamp) = ?
+            ORDER BY timestamp ASC
+            LIMIT ?
+            """,
+            (today, limit),
+        ).fetchall()
+
     return [dict(row) for row in rows]
 
 
