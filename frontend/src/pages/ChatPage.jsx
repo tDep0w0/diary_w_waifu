@@ -1,4 +1,6 @@
 import './ChatPage.css'
+import LoadingBubble from '../components/LoadingBubble';
+
 
 import startLogo from '../assets/start-logo.png';
 import chatSendButton from '../assets/chat-sent-button.svg';
@@ -47,7 +49,7 @@ export default function ChatPage() {
     setMessage('');
     setMessages(prev => [...prev, userMessage, {
       id: Date.now() + 1, 
-      text: "",
+      text: "Xin chào",
       sender: 'bot'
     }]);
     setHasStarted(true); 
@@ -107,9 +109,20 @@ export default function ChatPage() {
           ref={messageListRef}
         >
           {messages.map((msg) => (
-            <div key={msg.id} className={`chat-message ${msg.sender}`}>
-              {msg.text}
-            </div>
+            msg.sender === 'bot' ? (
+              <div key={msg.id} className="chat-message-row bot">
+                <img src={startLogo} alt="Bot Avatar" className="chat-avatar" />
+                <div className="chat-message bot">
+                  {msg.text}
+                </div>
+              </div>
+            ) : (
+              <div key={msg.id} className="chat-message-row user">
+                <div className="chat-message user">
+                  {msg.text}
+                </div>
+              </div>
+            )
           ))}
         </div>
       )}
