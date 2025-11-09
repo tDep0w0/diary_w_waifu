@@ -86,7 +86,7 @@ export default function Calendar({ onDateSelect }) {
         <button
           key={day}
           onClick={() => handleDateClick(day)}
-          className={`py-2 rounded-full border ${
+          className={`w-10 h-10 flex items-center justify-center rounded-full border ${
             isSelected ? "bg-blue-600 text-white" : "hover:bg-white hover:text-black"
           } ${isToday ? "border-red-500" : "border-transparent"}`}
         >
