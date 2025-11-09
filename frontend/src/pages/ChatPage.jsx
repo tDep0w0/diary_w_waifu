@@ -55,6 +55,22 @@ export default function ChatPage() {
     setHasStarted(true); 
     setIsLoading(true);
 
+    setTimeout(() => {
+      setMessages(prev => {
+        const updatedMessages = [...prev];
+        const lastIndex = updatedMessages.findLastIndex(msg => msg.sender === 'bot' && msg.text === "Loading...");
+        if (lastIndex !== -1) {
+          updatedMessages[lastIndex] = {
+            ...updatedMessages[lastIndex],
+            text: "Thật tuyệt khi nghe vậy"
+          };
+        }
+        return updatedMessages;
+      });
+      setIsLoading(false);
+    }, 1000);
+
+
     try {
       const response = await fetch(`http://127.0.0.1:8000/api/chat/
         ${encodeURIComponent(message)}`);
