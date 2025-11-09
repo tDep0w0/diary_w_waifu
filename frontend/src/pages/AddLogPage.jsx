@@ -36,6 +36,13 @@ export default function AddLogPage() {
       console.error(error);
     }
     setLogText('');
+    alert('Log saved!');
+    navigate('/diary', {
+      state: {
+        logText,
+        date: formattedDate,
+      },
+    });
   };
 
   // Tạo ngày hiện tại theo định dạng "Friday, 13 September 2025"
@@ -59,17 +66,26 @@ export default function AddLogPage() {
           value={logText}
           onChange={(e) => setLogText(e.target.value)}
         />
+
       </div>
 
       <div className="relative">
         <div className="absolute bottom-7 left-0 right-0 flex justify-between px-6">
-          <button className="bg-white text-black rounded-md py-2 px-4 w-26" onClick={() => navigate(-1)}>
+
+          <button
+            className="bg-white text-black rounded-md py-2 px-4 w-26 transition-transform transform hover:scale-102 active:scale-98"
+            onClick={() => navigate(-1)}
+          >
             ← Return
           </button>
 
-          <button className="bg-white text-black rounded-md py-2 px-4 w-26" onClick={handleSave}>
+          <button
+            className="bg-white text-black rounded-md py-2 px-4 w-26 transition-transform transform hover:scale-102 active:scale-98"
+            onClick={handleSave}
+          >
             Done
           </button>
+
         </div>
       </div>
 

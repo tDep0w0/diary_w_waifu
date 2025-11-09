@@ -14,6 +14,7 @@ export default function ChatPage() {
   const [isVisible, setIsVisible] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
 
+
   const messageListRef = useRef(null);
   const introRef = useRef(null);
   
@@ -28,7 +29,7 @@ export default function ChatPage() {
     if (hasStarted && introRef.current) {
       const timeout = setTimeout(() => {
         setIsVisible(false);
-        setShowMessages(true); // Hiển thị tin nhắn sau khi intro biến mất
+        setShowMessages(true);
       }, 600);
 
       return () => clearTimeout(timeout);
@@ -60,6 +61,7 @@ export default function ChatPage() {
 
 
 // DELETE AFTER OPEN AI WORKS
+
     // setTimeout(() => {
     //   setMessages(prev => {
     //     const updatedMessages = [...prev];
@@ -67,16 +69,15 @@ export default function ChatPage() {
     //     if (lastIndex !== -1) {
     //       updatedMessages[lastIndex] = {
     //         ...updatedMessages[lastIndex],
-    //         text: "Thật tuyệt khi nghe vậy"
+    //         text: "Good evening, Dat! How are you doing?"
     //       };
     //     }
     //     return updatedMessages;
     //   });
     //   setIsLoading(false);
     // }, 1000);
+
 // DELETE AFTER OPEN AI WORKS
-
-
 
 
 
@@ -160,7 +161,7 @@ export default function ChatPage() {
         <div className="chat-input-wrapper">
           <input
             type="text"
-            placeholder="Talk to Fuze..."
+            placeholder="Talk to Fura..."
             className="chat-input"
             value={message}
             onChange={(e) => setMessage(e.target.value)}
@@ -170,6 +171,7 @@ export default function ChatPage() {
               }
             }}
           />
+
           <button
             className="chat-send-button"
             onClick={handleSend}

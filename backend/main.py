@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse, StreamingResponse
 from openai import OpenAI
 from dotenv import load_dotenv
@@ -100,21 +100,38 @@ async def add_and_comment_entry_body(payload: EntryPayload):
 async def _create_stream_for_entry(entry_text: str):
     # 1️⃣ Add the entry to the database
     conn = get_db_connection()
-    conn.execute(
-        "INSERT INTO diary_entries (entry_date, entry_text) VALUES (DATE('now'), ?)",
-        (entry_text,),
-    )
+
+    if not entry_date:
+        conn.execute(
+            "INSERT INTO diary_entries (entry_date, entry_text) VALUES (DATE('now'), ?)",
+            (entry_text,),
+        )
+        entry_date = datetime.now().strftime("%Y-%m-%d")
+    else:
+        cursor = conn.execute(
+            "SELECT * FROM diary_entries WHERE entry_date = ?", (entry_date,)
+        )
+        existing = cursor.fetchone()
+        if existing:
+            conn.execute(
+                "UPDATE diary_entries SET entry_text = ?, ai_response_text = NULL WHERE entry_date = ?",
+                (entry_text, entry_date),
+            )
+        else:
+            conn.execute(
+                "INSERT INTO diary_entries (entry_date, entry_text) VALUES (?, ?)",
+                (entry_date, entry_text),
+            )
+
     conn.commit()
     conn.close()
 
-    # 2️⃣ Get the latest 4 entries (including the one just added)
     recent_entries = await get_latest_entries()
     if len(recent_entries) == 0:
         return JSONResponse({"error": "No recent entries found."})
 
     journal_texts = "\n\n".join([row["entry_text"] for row in recent_entries])
 
-    # 3️⃣ Stream AI comment
     stream = client.responses.create(
         model="openai/gpt-5-nano",
         input=[
@@ -139,11 +156,10 @@ async def _create_stream_for_entry(entry_text: str):
                 final_text += event.delta
                 yield event.delta
             elif event.type == "response.completed":
-                # Save the AI comment to the latest entry
                 conn = get_db_connection()
                 conn.execute(
-                    "UPDATE diary_entries SET ai_response_text = ? WHERE entry_date = DATE('now')",
-                    (final_text,),
+                    "UPDATE diary_entries SET ai_response_text = ? WHERE entry_date = ?",
+                    (final_text, entry_date),
                 )
                 conn.commit()
                 conn.close()
@@ -230,7 +246,7 @@ async def comment_message(message: str):
             input=[
                 {
                     "role": "system",
-                    "content": "You are a caring and emotionally intelligent listener.",
+                    "content": "You are a caring and emotionally intelligent listener. Depending on the length and the nature of the message, give a corresponding answer. Please, unless required, just keep a casual conversation",
                 },
                 {"role": "user", "content": full_prompt},
             ],

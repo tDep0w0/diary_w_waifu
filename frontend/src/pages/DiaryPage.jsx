@@ -21,10 +21,13 @@ export default function DiaryPage() {
           
           {/* Left column: calendar */}
           <aside className="w-72 shrink-0">
-            <button onClick={() => navigate("/diary/add")} className="w-full bg-white text-black rounded-md py-2 px-3 mb-6">
+            <button
+              onClick={() => navigate("/diary/add")}
+              className="w-full bg-white text-black rounded-md py-2 px-3 mb-6 transition-transform transform hover:scale-102 active:scale-98 hover:shadow-md"
+            >
               + Add Log
             </button>
-            <Calendar onDateSelect={handleDateSelect} />
+            <Calendar onDateSelect={handleDateSelect} selectedDate={selectedDate} />
           </aside>
 
           {/* Right column: diary entries */}
