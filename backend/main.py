@@ -64,16 +64,6 @@ def on_startup():
 
 
 
-@app.post("/add_entry")
-async def add_entry(entry_text: str):
-    conn = get_db_connection()
-    conn.execute(
-        "INSERT INTO diary_entries (entry_date, entry_text) VALUES (DATE('now'), ?)",
-        (entry_text,),
-    )
-    conn.commit()
-    conn.close()
-
 
 async def get_latest_entries(n=4):
     conn = get_db_connection()
@@ -89,14 +79,26 @@ async def get_latest_entries(n=4):
     return rows
 
 
-@app.post("/comment_journal")
-async def comment_journal():
+
+@app.post("/api/add_and_comment_entry/{entry_text}")
+async def add_and_comment_entry(entry_text: str):
+    # 1️⃣ Add the entry to the database
+    conn = get_db_connection()
+    conn.execute(
+        "INSERT INTO diary_entries (entry_date, entry_text) VALUES (DATE('now'), ?)",
+        (entry_text,),
+    )
+    conn.commit()
+    conn.close()
+
+    # 2️⃣ Get the latest 4 entries (including the one just added)
     recent_entries = await get_latest_entries()
     if len(recent_entries) == 0:
         return {"error": "No recent entries found."}
 
     journal_texts = "\n\n".join([row["entry_text"] for row in recent_entries])
 
+    # 3️⃣ Stream AI comment
     stream = client.responses.create(
         model="openai/gpt-5-nano",
         input=[
@@ -108,31 +110,55 @@ async def comment_journal():
                 ),
             },
             {"role": "user", "content": journal_texts},
-        ], stream = True
+        ],
+        stream=True
     )
 
     final_text = ""
 
     async def token_generator():
-            nonlocal final_text
-            for event in stream:
-                if event.type == "response.output_text.delta":
-                    final_text += event.delta
-                    yield event.delta
-                elif event.type == "response.completed":
-                    conn = get_db_connection()
-                    conn.execute(
-                        "UPDATE diary_entries SET ai_response_text = ? WHERE entry_date = DATE('now')",
-                        (final_text,),
-                    )
-                    conn.commit()
-                    conn.close()
-                    break
-                elif event.type == "response.error":
-                    yield f"\n[ERROR]: {event.error}\n"
-                    break
+        nonlocal final_text
+        for event in stream:
+            if event.type == "response.output_text.delta":
+                final_text += event.delta
+                yield event.delta
+            elif event.type == "response.completed":
+                # Save the AI comment to the latest entry
+                conn = get_db_connection()
+                conn.execute(
+                    "UPDATE diary_entries SET ai_response_text = ? WHERE entry_date = DATE('now')",
+                    (final_text,),
+                )
+                conn.commit()
+                conn.close()
+                break
+            elif event.type == "response.error":
+                yield f"\n[ERROR]: {event.error}\n"
+                break
 
     return StreamingResponse(token_generator(), media_type="text/plain")
+
+
+@app.get("/api/diary/{entry_date}")
+async def get_journal(entry_date: str):
+    conn = get_db_connection()
+    row = conn.execute(
+        "SELECT entry_date, entry_text, ai_response_text FROM diary_entries WHERE entry_date = ?",
+        (entry_date,),
+    ).fetchone()
+    conn.close()
+
+    if row:
+        return {
+            "entry_date": row["entry_date"],
+            "entry_text": row["entry_text"],
+            "ai_response_text": row["ai_response_text"]
+        }
+    else:
+        return {"error": f"No journal entry found for {entry_date}"}
+    
+
+
 
 
 # ---------------------Chat---------------------
@@ -212,3 +238,4 @@ async def comment_message(message: str):
         await save_message("assistant", "".join(ai_reply))
 
     return StreamingResponse(token_generator(), media_type="text/plain")
+
