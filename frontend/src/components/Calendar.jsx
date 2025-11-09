@@ -6,7 +6,7 @@ export default function Calendar({ onDateSelect }) {
 
   // Key arrow event
   useEffect(() => {
-  const handleKeyDown = (e) => {
+      const handleKeyDown = (e) => {
       if (!selectedDate) return;
 
       if (e.key === "ArrowLeft") {

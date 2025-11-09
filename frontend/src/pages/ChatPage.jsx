@@ -10,6 +10,8 @@ export default function ChatPage() {
   const [hasStarted, setHasStarted] = useState(false);
   const [showMessages, setShowMessages] = useState(false);
   const [isVisible, setIsVisible] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [reply, setReply] = useState("");
 
   const messageListRef = useRef(null);
   const introRef = useRef(null);
@@ -32,8 +34,8 @@ export default function ChatPage() {
   }, [hasStarted]);
 
 
-  const handleSend = () => {
-    if (message.trim() === '') return;
+  const handleSend = async () => {
+    if (message.trim() === '' || isLoading) return;
 
     const userMessage = {
       id: Date.now(),
@@ -41,15 +43,48 @@ export default function ChatPage() {
       sender: 'user'
     };
 
-    const botReply = {
-      id: Date.now() + 1, 
-      text: 'Thật tuyệt khi nghe vậy!',
-      sender: 'bot'
-    };
 
-    setMessages(prev => [...prev, userMessage, botReply]);
     setMessage('');
+    setMessages(prev => [...prev, userMessage, {
+      id: Date.now() + 1, 
+      text: "",
+      sender: 'bot'
+    }]);
     setHasStarted(true); 
+    setIsLoading(true);
+    setReply("");
+
+    try {
+      const response = await fetch(`/api/chat/?message=
+        ${encodeURIComponent(message)}`);
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        let chunk = decoder.decode(value, { stream: true });
+        setReply(prev => prev + chunk);
+
+        const botReply = {
+          id: Date.now() + 1, 
+          text: reply,
+          sender: 'bot'
+        };
+
+        setMessages(prev => {
+          const updated = prev.slice(0, -1);
+          return [...updated, botReply];
+        })
+      }
+
+      setIsLoading(false)
+      
+    } catch (error) {
+      console.error(error);
+    }
   };
 
 
