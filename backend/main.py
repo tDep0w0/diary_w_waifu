@@ -103,6 +103,7 @@ async def comment_journal():
 
         return StreamingResponse(token_generator(), media_type="text/plain")
 
+
 # ---------------------Chat---------------------
 
 

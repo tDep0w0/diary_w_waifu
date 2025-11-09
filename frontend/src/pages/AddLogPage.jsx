@@ -23,8 +23,8 @@ export default function AddLogPage() {
   return (
     <div className="min-h-screen  text-white flex flex-col justify-between p-6">
 
-      <div>
-        <h2 className="text-lg mb-5">{formattedDate}</h2>
+      <div className="mt-5">
+        <h2 className="text-lg mb-5 text-center">{formattedDate}</h2>
 
         <textarea
           className="w-full h-[70vh] p-4 text-white bg-[#071226] rounded-md resize-none"
@@ -35,12 +35,12 @@ export default function AddLogPage() {
       </div>
 
       <div className="relative">
-      <div className="absolute bottom-12 left-0 right-0 flex justify-between px-6">
-          <button className="bg-white text-black rounded-md py-2 px-4" onClick={() => navigate(-1)}>
+        <div className="absolute bottom-7 left-0 right-0 flex justify-between px-6">
+          <button className="bg-white text-black rounded-md py-2 px-4 w-26" onClick={() => navigate(-1)}>
             ← Return
           </button>
 
-          <button className="bg-white text-black rounded-md py-2 px-4" onClick={handleSave}>
+          <button className="bg-white text-black rounded-md py-2 px-4 w-26" onClick={handleSave}>
             Done
           </button>
         </div>
