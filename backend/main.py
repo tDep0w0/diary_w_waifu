@@ -7,9 +7,20 @@ from typing import List
 import sqlite3
 from datetime import datetime
 import json
+from fastapi.middleware.cors import CORSMiddleware
+
+
 
 load_dotenv()
 app = FastAPI()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["Content-Type"],
+)
 
 
 client = OpenAI(base_url="https://openrouter.ai/api/v1")
@@ -56,42 +67,43 @@ async def comment_journal():
     # Combine texts for model input
     journal_texts = "\n\n".join([row["entry_text"] for row in recent_entries])
 
-    stream = client.responses.create(
-        model="gpt-5-nano",
+    with client.responses.stream(
+        model="openai/gpt-5-nano",
         input=[
             {
                 "role": "system",
-                "content": "You are a supportive, attentive and empathetic commenter on the user's latest day journal while given knowledge about their previous 3 days",
+                "content": (
+                    "You are a supportive, attentive, and empathetic commenter "
+                    "on the user's latest day journal while given knowledge about their previous 3 days."
+                ),
             },
-            {"role": "user", "content": f"{journal_texts}"},
+            {"role": "user", "content": journal_texts},
         ],
-        stream=True,
-    )
+    ) as stream:
 
-    ai_comment = stream.output[0].content[0].text
+        final_text = ""
 
-    # Optionally store the comment for today
-    conn = get_db_connection()
-    conn.execute(
-        "UPDATE diary_entries SET ai_response_text = ? WHERE entry_date = DATE('now')",
-        (ai_comment,),
-    )
-    conn.commit()
-    conn.close()
+        def token_generator():
+            nonlocal final_text
+            for event in stream:
+                if event.type == "response.output_text.delta":
+                    final_text += event.delta
+                    yield event.delta
+                elif event.type == "response.completed":
+                    # Save the AI’s full comment to DB
+                    conn = get_db_connection()
+                    conn.execute(
+                        "UPDATE diary_entries SET ai_response_text = ? WHERE entry_date = DATE('now')",
+                        (final_text,),
+                    )
+                    conn.commit()
+                    conn.close()
+                    break
+                elif event.type == "response.error":
+                    yield f"\n[ERROR]: {event.error}\n"
+                    break
 
-    def event_generator():
-        for event in stream:
-            if event.type == "response.output_text.delta":
-                yield f"data: {json.dumps({'delta': event.delta})}\n\n"
-            elif event.type == "response.completed":
-                yield "data: [DONE]\n\n"
-                break
-            elif event.type == "response.error":
-                yield f"data: {json.dumps({'error': event.error})}\n\n"
-                break
-
-    return StreamingResponse(event_generator(), media_type="text/event-stream")
-
+        return StreamingResponse(token_generator(), media_type="text/plain")
 
 # ---------------------Chat---------------------
 
@@ -136,18 +148,14 @@ async def comment_message(message: str):
         stream=True,
     )
 
-    def event_generator():
+    async def token_generator():
         for event in stream:
             if event.type == "response.output_text.delta":
-                yield f"data: {json.dumps({'delta': event.delta})}\n\n"
-            elif event.type == "response.completed":
-                yield "data: [DONE]\n\n"
-                break
-            elif event.type == "response.error":
-                yield f"data: {json.dumps({'error': event.error})}\n\n"
-                break
+                yield event.delta  # event.delta contains the incremental token text
 
-    return StreamingResponse(event_generator(), media_type="text/event-stream")
+        yield "[DONE]"
+
+    return StreamingResponse(token_generator(), media_type="text/plain")
 
 
 @app.get("/api/chat/{message}")
