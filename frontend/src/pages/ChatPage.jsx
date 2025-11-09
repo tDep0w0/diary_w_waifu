@@ -55,6 +55,11 @@ export default function ChatPage() {
     setHasStarted(true); 
     setIsLoading(true);
 
+
+
+
+
+// DELETE AFTER OPEN AI WORKS
     setTimeout(() => {
       setMessages(prev => {
         const updatedMessages = [...prev];
@@ -69,6 +74,10 @@ export default function ChatPage() {
       });
       setIsLoading(false);
     }, 1000);
+// DELETE AFTER OPEN AI WORKS
+
+
+
 
 
     try {
