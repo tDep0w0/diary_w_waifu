@@ -1,14 +1,41 @@
 import { useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useContext, useState } from 'react';
+import AIResContext from '../context/AIResContext';
 
 export default function AddLogPage() {
   const navigate = useNavigate();
   const [logText, setLogText] = useState('');
+  const { setResponse } = useContext(AIResContext)
 
-  const handleSave = () => {
+  const handleSave = async () => {
     console.log('Saved log:', logText);
+    navigate("/diary")
+    try {
+      const response = await fetch('http://127.0.0.1:8000/api/add_and_comment_entry/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ entry_text: logText }),
+      });
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+
+      let streamedContent = "";
+      
+      while (true) {
+        const { value, done } = await reader.read();
+        if (done) break;
+
+        let chunk = decoder.decode(value, { stream: true });
+        streamedContent += chunk;
+        setResponse(streamedContent);
+      }
+    } catch (error) {
+      console.error(error);
+    }
     setLogText('');
-    alert('Log saved!');
   };
 
   // Tạo ngày hiện tại theo định dạng "Friday, 13 September 2025"

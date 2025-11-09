@@ -1,17 +1,17 @@
-import { useState } from 'react';
+import { useContext, useState } from 'react';
 import Calendar from '../components/Calendar'
 import './DiaryPage.css'
 import { useNavigate } from 'react-router-dom';
+import AIResContext from '../context/AIResContext';
 
 export default function DiaryPage() {
   const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = useState(null);
-
-
+  const { response } = useContext(AIResContext)
 
   const handleDateSelect = (date) => {
     setSelectedDate(date);
-    const formattedDate = selectedDate.toISOString().split('T')[0] // "2025-11-09"
+    // const formattedDate = selectedDate.toISOString().split('T')[0] // "2025-11-09"
   };
 
   return (
@@ -55,10 +55,7 @@ export default function DiaryPage() {
                 <div>
                   <div className="text-sm text-gray-300">Fuze</div>
                   <p className="text-sm text-gray-300 max-w-2xl">
-                    Lorem ipsum dolor sit amet consectetur. Mattis rhoncus turpis rutrum bibendum sapien in vestibulum
-                    fermentum. Cc morbi elementum quis sit etiam sed erat. Nibh in adipiscing porta porttitor gravida
-                    molestie ac. Fermentum amet integer nunc lacus egestas vitae vel tristique.Lorem ipsum dolor sit amet
-                    consectetur.
+                    {response}
                   </p>
                 </div>
               </div>

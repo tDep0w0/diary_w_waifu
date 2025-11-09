@@ -26,16 +26,17 @@ app.add_middleware(
 client = OpenAI(base_url="https://openrouter.ai/api/v1")
 
 
-
 def get_db_connection():
     conn = sqlite3.connect("diary.db")
     conn.row_factory = sqlite3.Row
     return conn
 
+
 def init_db():
     conn = get_db_connection()
     # Diary table
-    conn.execute("""
+    conn.execute(
+        """
         CREATE TABLE IF NOT EXISTS diary_entries (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             entry_date DATE NOT NULL UNIQUE,
@@ -43,26 +44,29 @@ def init_db():
             ai_response_text TEXT,
             created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
         )
-    """)
+    """
+    )
     # Chat table
-    conn.execute("""
+    conn.execute(
+        """
         CREATE TABLE IF NOT EXISTS chat_messages (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             timestamp TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
             speaker VARCHAR(4) NOT NULL,
             message_text TEXT NOT NULL
         )
-    """)
+    """
+    )
     conn.commit()
     conn.close()
+
 
 @app.on_event("startup")
 def on_startup():
     init_db()
 
+
 # ---------------------------FOR DIARY----------------------------
-
-
 
 
 async def get_latest_entries(n=4):
@@ -79,9 +83,21 @@ async def get_latest_entries(n=4):
     return rows
 
 
-
 @app.post("/api/add_and_comment_entry/{entry_text}")
 async def add_and_comment_entry(entry_text: str):
+    return await _create_stream_for_entry(entry_text)
+
+
+class EntryPayload(BaseModel):
+    entry_text: str
+
+
+@app.post("/api/add_and_comment_entry/")
+async def add_and_comment_entry_body(payload: EntryPayload):
+    return await _create_stream_for_entry(payload.entry_text)
+
+
+async def _create_stream_for_entry(entry_text: str):
     # 1️⃣ Add the entry to the database
     conn = get_db_connection()
     conn.execute(
@@ -94,7 +110,7 @@ async def add_and_comment_entry(entry_text: str):
     # 2️⃣ Get the latest 4 entries (including the one just added)
     recent_entries = await get_latest_entries()
     if len(recent_entries) == 0:
-        return {"error": "No recent entries found."}
+        return JSONResponse({"error": "No recent entries found."})
 
     journal_texts = "\n\n".join([row["entry_text"] for row in recent_entries])
 
@@ -111,7 +127,7 @@ async def add_and_comment_entry(entry_text: str):
             },
             {"role": "user", "content": journal_texts},
         ],
-        stream=True
+        stream=True,
     )
 
     final_text = ""
@@ -152,17 +168,13 @@ async def get_journal(entry_date: str):
         return {
             "entry_date": row["entry_date"],
             "entry_text": row["entry_text"],
-            "ai_response_text": row["ai_response_text"]
+            "ai_response_text": row["ai_response_text"],
         }
     else:
         return {"error": f"No journal entry found for {entry_date}"}
-    
-
-
 
 
 # ---------------------Chat---------------------
-
 
 
 async def save_message(speaker: str, text: str):
@@ -173,6 +185,7 @@ async def save_message(speaker: str, text: str):
     )
     conn.commit()
     conn.close()
+
 
 async def get_today_messages(limit=30):
     conn = get_db_connection()
@@ -189,7 +202,6 @@ async def get_today_messages(limit=30):
     ).fetchall()
     conn.close()
     return [dict(row) for row in rows]
-
 
 
 @app.get("/api/chat/{message}")
@@ -209,19 +221,21 @@ async def comment_message(message: str):
         + f"\nuser: {message}"
     )
 
-    
-
     async def token_generator():
         ai_reply = []
         loop = asyncio.get_event_loop()
 
         stream = client.responses.create(
-        model="gpt-5-nano",
-        input=[
-            {"role": "system", "content": "You are a caring and emotionally intelligent listener."},
-            {"role": "user", "content": full_prompt},
-        ], stream = True
-    )
+            model="gpt-5-nano",
+            input=[
+                {
+                    "role": "system",
+                    "content": "You are a caring and emotionally intelligent listener.",
+                },
+                {"role": "user", "content": full_prompt},
+            ],
+            stream=True,
+        )
 
         def sync_iter():
             for event in stream:
@@ -233,9 +247,8 @@ async def comment_message(message: str):
             if chunk != "[DONE]":
                 ai_reply.append(chunk)
                 yield chunk
-            await asyncio.sleep(0) 
+            await asyncio.sleep(0)
 
         await save_message("assistant", "".join(ai_reply))
 
     return StreamingResponse(token_generator(), media_type="text/plain")
-

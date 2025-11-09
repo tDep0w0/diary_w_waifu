@@ -1,6 +1,11 @@
 ###
 GET http://127.0.0.1:8000/api/chat/Who%20are%20you
 ###
-POST http://127.0.0.1:8000/api/add_and_comment_entry/Today%20I%20went%20for%20a%20walk
+POST http://127.0.0.1:8000/api/add_and_comment_entry
+Content-Type: application/json
+
+{
+  "entry_text": "Today I went for a walk"
+}
 ###
 GET http://127.0.0.1:8000/api/diary/2025-11-09

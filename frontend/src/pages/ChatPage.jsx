@@ -60,20 +60,20 @@ export default function ChatPage() {
 
 
 // DELETE AFTER OPEN AI WORKS
-    setTimeout(() => {
-      setMessages(prev => {
-        const updatedMessages = [...prev];
-        const lastIndex = updatedMessages.findLastIndex(msg => msg.sender === 'bot' && msg.text === "Loading...");
-        if (lastIndex !== -1) {
-          updatedMessages[lastIndex] = {
-            ...updatedMessages[lastIndex],
-            text: "Thật tuyệt khi nghe vậy"
-          };
-        }
-        return updatedMessages;
-      });
-      setIsLoading(false);
-    }, 1000);
+    // setTimeout(() => {
+    //   setMessages(prev => {
+    //     const updatedMessages = [...prev];
+    //     const lastIndex = updatedMessages.findLastIndex(msg => msg.sender === 'bot' && msg.text === "Loading...");
+    //     if (lastIndex !== -1) {
+    //       updatedMessages[lastIndex] = {
+    //         ...updatedMessages[lastIndex],
+    //         text: "Thật tuyệt khi nghe vậy"
+    //       };
+    //     }
+    //     return updatedMessages;
+    //   });
+    //   setIsLoading(false);
+    // }, 1000);
 // DELETE AFTER OPEN AI WORKS
 
 
