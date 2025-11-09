@@ -5,13 +5,12 @@ import { useNavigate } from 'react-router-dom';
 
 export default function DiaryPage() {
   const navigate = useNavigate();
-  const [selectedDate, setSelectedDate] = useState(null);
-
-
+  const [selectedDate, setSelectedDate] = useState(new Date());
 
   const handleDateSelect = (date) => {
     setSelectedDate(date);
-    const formattedDate = selectedDate.toISOString().split('T')[0] // "2025-11-09"
+    const formattedDate = date.toISOString().split('T')[0]; // dùng date trực tiếp
+    console.log(formattedDate);
   };
 
   return (
@@ -27,7 +26,7 @@ export default function DiaryPage() {
             >
               + Add Log
             </button>
-            <Calendar onDateSelect={handleDateSelect} />
+            <Calendar onDateSelect={handleDateSelect} selectedDate={selectedDate} />
           </aside>
 
           {/* Right column: diary entries */}

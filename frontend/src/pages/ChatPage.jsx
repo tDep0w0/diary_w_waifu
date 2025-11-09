@@ -14,6 +14,7 @@ export default function ChatPage() {
   const [isVisible, setIsVisible] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
 
+
   const messageListRef = useRef(null);
   const introRef = useRef(null);
   
@@ -28,7 +29,7 @@ export default function ChatPage() {
     if (hasStarted && introRef.current) {
       const timeout = setTimeout(() => {
         setIsVisible(false);
-        setShowMessages(true); // Hiển thị tin nhắn sau khi intro biến mất
+        setShowMessages(true);
       }, 600);
 
       return () => clearTimeout(timeout);
@@ -60,23 +61,23 @@ export default function ChatPage() {
 
 
 // DELETE AFTER OPEN AI WORKS
-    setTimeout(() => {
-      setMessages(prev => {
-        const updatedMessages = [...prev];
-        const lastIndex = updatedMessages.findLastIndex(msg => msg.sender === 'bot' && msg.text === "Loading...");
-        if (lastIndex !== -1) {
-          updatedMessages[lastIndex] = {
-            ...updatedMessages[lastIndex],
-            text: "Good evening, Dat! How are you doing?"
-          };
-        }
-        return updatedMessages;
-      });
-      setIsLoading(false);
-    }, 1000);
+
+    // setTimeout(() => {
+    //   setMessages(prev => {
+    //     const updatedMessages = [...prev];
+    //     const lastIndex = updatedMessages.findLastIndex(msg => msg.sender === 'bot' && msg.text === "Loading...");
+    //     if (lastIndex !== -1) {
+    //       updatedMessages[lastIndex] = {
+    //         ...updatedMessages[lastIndex],
+    //         text: "Good evening, Dat! How are you doing?"
+    //       };
+    //     }
+    //     return updatedMessages;
+    //   });
+    //   setIsLoading(false);
+    // }, 1000);
+
 // DELETE AFTER OPEN AI WORKS
-
-
 
 
 

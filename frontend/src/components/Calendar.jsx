@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 
 export default function Calendar({ onDateSelect }) {
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState(null);
+  const [selectedDate, setSelectedDate] = useState(new Date());
+
 
   // Key arrow event
   useEffect(() => {

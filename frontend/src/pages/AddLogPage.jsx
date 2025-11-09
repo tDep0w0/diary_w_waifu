@@ -9,7 +9,12 @@ export default function AddLogPage() {
     console.log('Saved log:', logText);
     setLogText('');
     alert('Log saved!');
-    navigate(-1)
+    navigate('/diary', {
+      state: {
+        logText,
+        date: formattedDate,
+      },
+    });
   };
 
   // Tạo ngày hiện tại theo định dạng "Friday, 13 September 2025"
