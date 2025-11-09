@@ -81,7 +81,7 @@ export default function ChatPage() {
 
 
       {/* Chat Bar */}
-      <div className="chat-bar fixed-bottom">
+      <div className={`chat-bar ${hasStarted ? 'at-bottom' : 'at-center'}`}>
         <div className="chat-input-wrapper">
           <input
             type="text"

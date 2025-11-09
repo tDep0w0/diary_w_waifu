@@ -44,6 +44,7 @@ p {
   border-radius:50%;
   display:block;
   margin:auto;
+  margin-top:100px;
   margin-bottom:10px;
 }
 
@@ -117,7 +118,6 @@ p {
   align-self: flex-end;
   background-color: #1E293B;
   border: 1px solid #334155;
-
   border-bottom-right-radius: 4px;
 }
 
@@ -139,10 +139,14 @@ p {
 }
 
 
-.chat-bar.fixed-bottom {
-  position: fixed;
-  bottom: 20px;
-  width: 100%;
-  padding: 10px;
+.chat-bar{
+  position:fixed;
+  bottom:200px;
+  width:100%;
+  padding:10px;
   box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
 }
+.chat-bar.at-bottom {
+  bottom:50px;  
+}
+
