@@ -60,7 +60,7 @@ async def get_latest_entries(n=4):
 
 @app.post("/comment_journal")
 async def comment_journal():
-    recent_entries = get_latest_entries()
+    recent_entries = await get_latest_entries()
     if len(recent_entries) == 0:
         return {"error": "No recent entries found."}
 
@@ -106,11 +106,6 @@ async def comment_journal():
 
 # ---------------------Chat---------------------
 
-
-def get_db_connection():
-    conn = sqlite3.connect("diary.db")
-    conn.row_factory = sqlite3.Row
-    return conn
 
 async def save_message(speaker: str, text: str):
     conn = get_db_connection()
