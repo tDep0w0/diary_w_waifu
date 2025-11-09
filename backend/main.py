@@ -158,7 +158,26 @@ async def get_journal(entry_date: str):
         return {"error": f"No journal entry found for {entry_date}"}
     
 
+@app.get("/api/modify_diary/{entry_date}")
+async def modify_diary(entry_date: str, entry_text: str):
+    conn = get_db_connection()
+    cursor = conn.execute(
+        "SELECT * FROM diary_entries WHERE entry_date = ?",
+        (entry_date,)
+    )
+    entry = cursor.fetchone()
 
+    if not entry:
+        conn.close()
+
+    conn.execute(
+        "UPDATE diary_entries SET entry_text = ? WHERE entry_date = ?",
+        (entry_text, entry_date)
+    )
+    conn.commit()
+    conn.close()
+
+    return {"message": f"Diary entry for {entry_date} updated successfully."}
 
 
 # ---------------------Chat---------------------
@@ -218,7 +237,7 @@ async def comment_message(message: str):
         stream = client.responses.create(
         model="gpt-5-nano",
         input=[
-            {"role": "system", "content": "You are a caring and emotionally intelligent listener."},
+            {"role": "system", "content": "You are a caring and emotionally intelligent listener. Depending on the length and the nature of the message, give a corresponding answer."},
             {"role": "user", "content": full_prompt},
         ], stream = True
     )
