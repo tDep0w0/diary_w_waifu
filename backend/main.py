@@ -150,6 +150,7 @@ async def comment_message(message: str):
 
 @app.post("/api/chat/{message}")
 async def test_comment(message : str):
+    print("Test")
     stream  = client.responses.create(
             model="gpt-5-nano",
             input=[
