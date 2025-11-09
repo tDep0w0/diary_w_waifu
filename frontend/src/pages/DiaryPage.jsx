@@ -7,6 +7,8 @@ export default function DiaryPage() {
   const navigate = useNavigate();
   const [selectedDate, setSelectedDate] = useState(null);
 
+  const formattedDate = selectedDate.toISOString().split('T')[0]; // "2025-11-09"
+
   const handleDateSelect = (date) => {
     setSelectedDate(date);
   };
