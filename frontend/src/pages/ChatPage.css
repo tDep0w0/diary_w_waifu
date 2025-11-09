@@ -42,6 +42,10 @@ p {
 
 }
 
+.chat-input::placeholder {
+  color: #94A3B8;
+}
+
 .intro-logo {
 
   width: clamp(80px, 14vw, 160px);

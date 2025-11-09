@@ -67,7 +67,7 @@ export default function ChatPage() {
         if (lastIndex !== -1) {
           updatedMessages[lastIndex] = {
             ...updatedMessages[lastIndex],
-            text: "Thật tuyệt khi nghe vậy"
+            text: "Good evening, Dat! How are you doing?"
           };
         }
         return updatedMessages;
@@ -160,7 +160,7 @@ export default function ChatPage() {
         <div className="chat-input-wrapper">
           <input
             type="text"
-            placeholder="Talk to Fuze..."
+            placeholder="Talk to Fura..."
             className="chat-input"
             value={message}
             onChange={(e) => setMessage(e.target.value)}
@@ -170,6 +170,7 @@ export default function ChatPage() {
               }
             }}
           />
+
           <button
             className="chat-send-button"
             onClick={handleSend}
